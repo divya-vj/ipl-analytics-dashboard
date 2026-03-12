@@ -11,6 +11,110 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# ── Custom CSS Styling ─────────────────────────────────────────────────────
+st.markdown("""
+<style>
+
+/* ── Main background ── */
+.main {
+    background-color: #0E1117;
+}
+
+/* ── Metric cards ── */
+[data-testid="metric-container"] {
+    background: linear-gradient(135deg, #1A56A8, #0D2B5E);
+    border-radius: 10px;
+    padding: 15px 20px;
+    border: 1px solid #2A5FC8;
+}
+[data-testid="metric-container"] label {
+    color: #A0C4FF !important;
+    font-size: 13px !important;
+}
+[data-testid="metric-container"] [data-testid="stMetricValue"] {
+    color: #FFFFFF !important;
+    font-size: 28px !important;
+    font-weight: 700 !important;
+}
+
+/* ── Sidebar styling ── */
+[data-testid="stSidebar"] {
+    background-color: #0D2B5E;
+    border-right: 2px solid #1A56A8;
+}
+[data-testid="stSidebar"] * {
+    color: #DCE8FA !important;
+}
+
+/* ── Page title ── */
+h1 {
+    color: #1A56A8 !important;
+    border-bottom: 2px solid #1A56A8;
+    padding-bottom: 10px;
+}
+
+/* ── Subheaders ── */
+h2, h3 {
+    color: #2A6ED4 !important;
+}
+
+/* ── Dataframe ── */
+[data-testid="stDataFrame"] {
+    border: 1px solid #1A56A8;
+    border-radius: 8px;
+}
+
+/* ── Buttons ── */
+.stButton button {
+    background-color: #1A56A8;
+    color: white;
+    border-radius: 8px;
+    border: none;
+    padding: 8px 24px;
+    font-weight: 600;
+    transition: background-color 0.3s;
+}
+.stButton button:hover {
+    background-color: #0D2B5E;
+    color: white;
+}
+
+/* ── Success message ── */
+.stSuccess {
+    background-color: #0A4A25 !important;
+    border-left: 4px solid #1A7A42 !important;
+}
+
+/* ── Error message ── */
+.stError {
+    background-color: #4A0A0A !important;
+    border-left: 4px solid #C04A00 !important;
+}
+
+/* ── Text area ── */
+.stTextArea textarea {
+    background-color: #1A1A2E;
+    color: #CDD6F4;
+    border: 1px solid #1A56A8;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+}
+
+/* ── Selectbox ── */
+.stSelectbox > div > div {
+    background-color: #1A1A2E;
+    border: 1px solid #1A56A8;
+    color: white;
+}
+
+/* ── Horizontal rule ── */
+hr {
+    border-color: #1A56A8;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
 # ── Database Helper ────────────────────────────────────────────────────────
 @st.cache_data
 def run_query(sql):
@@ -54,6 +158,47 @@ if page == "📊 Season Overview":
     col4.metric("Batters",        total_players)
 
     st.markdown("---")
+    # ── Key Insights Box ──────────────────────────────────────────────────
+    st.subheader("🔑 Key Insights From The Data")
+    ins1, ins2, ins3 = st.columns(3)
+
+    with ins1:
+        st.markdown("""
+        <div style='background:#0A4A25; border-left:4px solid #1A7A42;
+                    padding:15px; border-radius:8px;'>
+            <b style='color:#6FCF97'>📈 Scores Are Rising</b><br>
+            <span style='color:#ccc; font-size:13px'>
+            Average first innings score jumped from 150 in 2009 to 190 in 2024.
+            IPL has become significantly more aggressive over 17 seasons.
+            </span>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with ins2:
+        st.markdown("""
+        <div style='background:#0D2B5E; border-left:4px solid #1A56A8;
+                    padding:15px; border-radius:8px;'>
+            <b style='color:#A0C4FF'>🪙 Toss Barely Matters</b><br>
+            <span style='color:#ccc; font-size:13px'>
+            Toss winner wins only 50.8% of matches — essentially a coin flip.
+            Team quality matters far more than winning the toss.
+            </span>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with ins3:
+        st.markdown("""
+        <div style='background:#3B1560; border-left:4px solid #7B3FA0;
+                    padding:15px; border-radius:8px;'>
+            <b style='color:#D4A0FF'>🏆 Most Dominant Team</b><br>
+            <span style='color:#ccc; font-size:13px'>
+            Mumbai Indians won 13 matches in 2013 — the most wins by any
+            team in a single IPL season in history.
+            </span>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
 
     # ── Chart 1: Matches Per Season ───────────────────────────────────────
     st.subheader("📅 Matches Per Season")
@@ -183,6 +328,89 @@ elif page == "🏏 Batting Analysis":
     )
     fig_six.update_layout(xaxis_tickangle=-45)
     st.plotly_chart(fig_six, use_container_width=True)
+
+    # ── Top Scorer Per Season ─────────────────────────────────────────────
+    st.subheader("🏆 Top Scorer Each Season — Window Function Analysis")
+    q_top = run_query("""
+        SELECT season, batter, season_runs
+        FROM (
+            SELECT m.season,
+                   d.batter,
+                   SUM(d.batsman_runs) AS season_runs,
+                   ROW_NUMBER() OVER (
+                       PARTITION BY m.season
+                       ORDER BY SUM(d.batsman_runs) DESC
+                   ) AS rank_in_season
+            FROM deliveries d
+            JOIN matches m ON d.match_id = m.id
+            GROUP BY m.season, d.batter
+        ) ranked
+        WHERE rank_in_season = 1
+        ORDER BY season
+    """)
+    fig_top = px.bar(
+        q_top,
+        x="season", y="season_runs",
+        text="batter",
+        title="Top Run Scorer Per Season",
+        labels={"season":"Season","season_runs":"Runs","batter":"Batsman"},
+        color="season_runs",
+        color_continuous_scale="Viridis"
+    )
+    fig_top.update_traces(textposition="outside", textfont_size=10)
+    fig_top.update_layout(xaxis_tickangle=-45)
+    st.plotly_chart(fig_top, use_container_width=True)
+    # ── Player Comparison Feature ─────────────────────────────────────────
+    st.subheader("⚔️ Compare Two Batsmen")
+    all_batters = run_query("""
+        SELECT DISTINCT batter FROM deliveries
+        ORDER BY batter
+    """)["batter"].tolist()
+
+    col_p1, col_p2 = st.columns(2)
+    with col_p1:
+        player1 = st.selectbox("Select Player 1:", all_batters,
+                               index=all_batters.index("V Kohli")
+                               if "V Kohli" in all_batters else 0)
+    with col_p2:
+        player2 = st.selectbox("Select Player 2:", all_batters,
+                               index=all_batters.index("RG Sharma")
+                               if "RG Sharma" in all_batters else 1)
+
+    def get_player_stats(name):
+        return run_query(f"""
+            SELECT
+                SUM(batsman_runs)                                           AS total_runs,
+                COUNT(DISTINCT match_id)                                    AS matches,
+                ROUND(SUM(batsman_runs)*1.0/COUNT(DISTINCT match_id),1)    AS avg_per_match,
+                SUM(CASE WHEN batsman_runs=6 THEN 1 ELSE 0 END)            AS sixes,
+                SUM(CASE WHEN batsman_runs=4 THEN 1 ELSE 0 END)            AS fours,
+                MAX(batsman_runs)                                           AS highest_in_delivery
+            FROM deliveries
+            WHERE batter = '{name}'
+        """)
+
+    s1 = get_player_stats(player1).iloc[0]
+    s2 = get_player_stats(player2).iloc[0]
+
+    comp_data = {
+        "Stat":         ["Total Runs","Matches","Avg Per Match","Sixes","Fours"],
+        player1:        [s1.total_runs, s1.matches, s1.avg_per_match,
+                         s1.sixes, s1.fours],
+        player2:        [s2.total_runs, s2.matches, s2.avg_per_match,
+                         s2.sixes, s2.fours],
+    }
+    import pandas as pd
+    comp_df = pd.DataFrame(comp_data)
+    st.dataframe(comp_df, use_container_width=True)
+
+    fig_comp = px.bar(
+        comp_df.melt(id_vars="Stat", var_name="Player", value_name="Value"),
+        x="Stat", y="Value", color="Player", barmode="group",
+        title=f"{player1} vs {player2} — Career Comparison",
+        color_discrete_sequence=["#1A56A8","#C04A00"]
+    )
+    st.plotly_chart(fig_comp, use_container_width=True)
 
     st.subheader("Full Data Table")
     st.dataframe(df_bat, use_container_width=True)
@@ -314,3 +542,17 @@ ORDER BY season"""
                 )
         except Exception as e:
             st.error(f"❌ SQL Error: {str(e)}")
+
+
+
+# ── Footer ────────────────────────────────────────────────────────────────
+st.markdown("---")
+st.markdown(
+    """
+    <div style='text-align:center; color:#555; font-size:12px; padding:10px'>
+        IPL Analytics Dashboard · Built with Python, SQLite, Streamlit & Plotly ·
+        Data: IPL 2007–2024 · 1095 Matches · 260,920 Deliveries
+    </div>
+    """,
+    unsafe_allow_html=True
+)
