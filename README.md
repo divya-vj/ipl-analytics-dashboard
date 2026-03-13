@@ -4,7 +4,7 @@ A data analytics dashboard built with Python and SQL, analysing 17 seasons
 of IPL cricket data. Answers real cricket business questions through 
 interactive charts and live SQL queries.
 
-**[🔗 Live Demo](YOUR_STREAMLIT_URL_HERE)**
+🔗 **[Click here to open the live dashboard](https://ipl-analytics-dashboard-khcwguts3nzukt2dnwy8tk.streamlit.app)**
 
 ---
 
